@@ -11,6 +11,28 @@
 
 ## 绘图基础框架搭建
 
+1. 新建头文件载入需要使用的库
+  ``` c++
+  #pragma once
+  #include <OpenGL/gl.h>
+  #include <OpenGL/glu.h> // 辅助库
+  #include <OpenGL/glext.h> // GL扩展
+  #include <stdio.h> // 标准C头文件
+  #include <math.h>
+  #include <string.h>
+  #include <string>
+  #include <sstream>
+  #include <vector> // 容器
+  #include <functional> // 函数包装器模板
+  ```
+2. .mm后缀文件重载NSOpenGLView中的方法：
+
+  * 函数`prepareOpenGL`：执行包括：初始化场景，设置定时器（60fps, 即每0.016秒执行绘制一帧的函数）
+  * 函数`drawRect`: 执行包括：绘制场景，把所有指令全部刷新到GPU上执行
+  * 函数`renderOneFrame`: 执行包括：设置当前视口被绘制
+
+3. 新建一个场景c++文件，执行包括：初始化场景，绘制场景
+
 ## 基本图形实例
 
 ## 自由变换图形实例
