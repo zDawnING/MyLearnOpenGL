@@ -40,40 +40,39 @@
 ## 基本图形实例
 
 1. 绘制三角形示例代码：
-  ``` c++
-  // 生成三角形
-      glBegin(GL_TRIANGLES);
-      glColor4ub(255, 255, 255, 255);
-      glVertex3f(-1.0f,-0.3f,-1.5f);
-      glColor4ub(255, 0, 0, 255);
-      glVertex3f(0.2f, -0.2f, -1.5f);
-      glColor4ub(0, 255, 0, 255);
-      glVertex3f(0.0f, 0.2f, -1.5f);
-  
-  // 生成三角形带
-      glBegin(GL_TRIANGLE_STRIP);
-  //设置点（正面则以逆时针进行点的无缝连接，新的绘制会覆盖旧的绘制）
-      glColor4ub(255, 0, 0, 255); glVertex3f(-0.5f, -0.25f, -2.5f); // 红
-      glColor4ub(0, 0, 255, 255); glVertex3f(0.5f, -0.25f, -2.5f); // 蓝
-      glColor4ub(0, 255, 0, 255); glVertex3f(0.0f, 0.25f, -2.5f); // 绿
-      glColor4ub(255, 0, 0, 255); glVertex3f(0.5f, 0.25f, -2.5f); // 红
-      glColor4ub(0, 255, 0, 255); glVertex3f(0.0f, 0.0f, -2.5f); // 绿
-  
-  // 生成三角扇形
-      glBegin(GL_TRIANGLE_FAN);
-  // 设置点（第一个点是圆心点，然后其他点每两个点形成一个三角形）
-  // 公式：绘制一组相连的三角形，三角形是由第一个顶点及其后给定的顶点确定，顶点1，n+1与n+2定义了第n个三角形，共绘制了N-2个三角形
-      glColor4ub(255, 0, 0, 255); glVertex3f(0.0f, 0.0f, -2.5f); // 红
-      glColor4ub(0, 0, 255, 255); glVertex3f(0.5f, 0.0f, -2.5f); // 蓝
-      glColor4ub(0, 255, 0, 255); glVertex3f(0.4f, 0.25f, -2.5f); // 绿
-      glColor4ub(0, 255, 0, 255); glVertex3f(0.2f, 0.4f, -2.5f); // 绿
-      glColor4ub(0, 0, 255, 255); glVertex3f(0.0f, 0.45f, -2.5f); // 蓝
-  // 提示：如果想要画出的扇形更加好看就需要注意斜率的变化计算
-  
-  ```
+``` c++
+// 生成三角形
+    glBegin(GL_TRIANGLES);
+    glColor4ub(255, 255, 255, 255);
+    glVertex3f(-1.0f,-0.3f,-1.5f);
+    glColor4ub(255, 0, 0, 255);
+    glVertex3f(0.2f, -0.2f, -1.5f);
+    glColor4ub(0, 255, 0, 255);
+    glVertex3f(0.0f, 0.2f, -1.5f);
+
+// 生成三角形带
+    glBegin(GL_TRIANGLE_STRIP);
+//设置点（正面则以逆时针进行点的无缝连接，新的绘制会覆盖旧的绘制）
+    glColor4ub(255, 0, 0, 255); glVertex3f(-0.5f, -0.25f, -2.5f); // 红
+    glColor4ub(0, 0, 255, 255); glVertex3f(0.5f, -0.25f, -2.5f); // 蓝
+    glColor4ub(0, 255, 0, 255); glVertex3f(0.0f, 0.25f, -2.5f); // 绿
+    glColor4ub(255, 0, 0, 255); glVertex3f(0.5f, 0.25f, -2.5f); // 红
+    glColor4ub(0, 255, 0, 255); glVertex3f(0.0f, 0.0f, -2.5f); // 绿
+
+// 生成三角扇形
+// 提示：如果想要画出的扇形更加好看就需要注意斜率的变化计算
+    glBegin(GL_TRIANGLE_FAN);
+// 设置点（第一个点是圆心点，然后其他点每两个点形成一个三角形）
+// 公式：绘制一组相连的三角形，三角形是由第一个顶点及其后给定的顶点确定，顶点1，n+1与n+2定义了第n个三角形，共绘制了N-2个三角形
+    glColor4ub(255, 0, 0, 255); glVertex3f(0.0f, 0.0f, -2.5f); // 红
+    glColor4ub(0, 0, 255, 255); glVertex3f(0.5f, 0.0f, -2.5f); // 蓝
+    glColor4ub(0, 255, 0, 255); glVertex3f(0.4f, 0.25f, -2.5f); // 绿
+    glColor4ub(0, 255, 0, 255); glVertex3f(0.2f, 0.4f, -2.5f); // 绿
+    glColor4ub(0, 0, 255, 255); glVertex3f(0.0f, 0.45f, -2.5f); // 蓝
+```
   
 2. 绘制点与线段示例代码：
-  ``` c++
+  ```c++
   // 绘制点（点是像素端，是方形而不是圆形）
       glPointSize(10.0f); // (默认状态下是1.0)
       glBegin(GL_POINTS);
