@@ -153,6 +153,84 @@
   
 ## 自由变换图形实例
 
+1. 移动物体示例代码：
+``` c++
+// 移动物体,使用矩阵将z坐标为0的三角形转换成-2.5，若为0时当前三角形与相机重合，因此不可见，仅在z轴负方向大于或等于0.1的距离才能看到
+    glLoadIdentity();
+    glTranslatef(0.0f, 0.0f, -2.5f);
+// 此时ModeViewMatrix就可以让这以后的所有数据都带上一个-2.5的Z方向的偏移
+
+    glBegin(GL_TRIANGLES);
+    glColor4ub(255, 255, 255, 255); glVertex3f(-0.5f,-0.25f,0.0f);
+    glColor4ub(255, 0, 0, 255); glVertex3f(0.5f, -0.25f, 0.0f);
+    glColor4ub(0, 255, 0, 255); glVertex3f(0.0f, 0.5f, 0.0f);
+```
+2. 旋转物体示例代码：
+``` c++
+// 旋转物体，将三角形沿z轴旋转30.0度，物体的旋转永远是沿着物体的坐标轴来进行旋转的【重点】
+    glLoadIdentity();
+    glRotated(30.0f, 0.0f, 0.0f, 1.0f);
+
+    glBegin(GL_TRIANGLES);
+    glColor4ub(255, 255, 255, 255); glVertex3f(-0.5f,-0.25f,-2.5f);
+    glColor4ub(255, 0, 0, 255); glVertex3f(0.5f, -0.25f, -2.5f);
+    glColor4ub(0, 255, 0, 255); glVertex3f(0.0f, 0.5f, -2.5f);
+```
+3. 缩放物体示例代码：
+``` c++
+// 缩放物体，当给物体进行缩放的时候，实质的缩放是三角形的所有点的缩放,因此从相机的角度去看，三角形是没有变化的，但是从世界坐标系的细节上看，三角形实质上已缩放0.3倍，同时距离也缩放0.3，因此如果x,y,z上都进行同比例的缩放，从正面上看三角形是不会有什么变化的
+    glLoadIdentity();
+    glScalef(0.3f, 0.3f, 0.3f); // 若比例不同则有相应变化
+
+    glBegin(GL_TRIANGLES);
+    glColor4ub(255, 255, 255, 255); glVertex3f(-0.5f,-0.25f,-2.5f);
+    glColor4ub(255, 0, 0, 255); glVertex3f(0.5f, -0.25f, -2.5f);
+    glColor4ub(0, 255, 0, 255); glVertex3f(0.0f, 0.5f, -2.5f);
+```
+4. 组合变换示例代码（使用矩阵压栈和出栈进行简单组合）：
+``` c++
+    glLoadIdentity(); // 确保清除前一帧画面对模型视口矩阵的影响（因为前一帧画面可能修改过模型视口矩阵的值），当前栈顶为单位矩阵
+    glPushMatrix(); // 当前栈顶的矩阵能够影响到当前图形的坐标，此时当前栈顶元素被压栈，并被在栈顶留下一份被压栈的元素的拷贝，当前栈顶还是个单位矩阵
+    glTranslatef(-1.0f, 0.0f, 0.0f); // 当前栈顶为x方向偏移-1的矩阵
+    glBegin(GL_TRIANGLES);
+    glColor4ub(255, 255, 255, 255); glVertex3f(-0.5f,-0.25f,-2.5f);
+    glColor4ub(255, 0, 0, 255); glVertex3f(0.5f, -0.25f, -2.5f);
+    glColor4ub(0, 255, 0, 255); glVertex3f(0.0f, 0.5f, -2.5f);
+    glEnd();
+    
+    glPopMatrix(); // 将当前栈顶元素弹出，被压下去的矩阵又会重新回到栈顶，当前栈顶为单位矩阵
+    glPushMatrix(); // 继续进行压栈操作，当前栈顶为单位矩阵
+    glTranslatef(1.0f, 0.0f, 0.0f); // 当前栈顶为x方向偏移1的矩阵
+    glBegin(GL_TRIANGLES);
+    glColor4ub(255, 255, 255, 255); glVertex3f(-0.5f,-0.25f,-2.5f);
+    glColor4ub(255, 0, 0, 255); glVertex3f(0.5f, -0.25f, -2.5f);
+    glColor4ub(0, 255, 0, 255); glVertex3f(0.0f, 0.5f, -2.5f);
+    glEnd();
+    
+    glPopMatrix(); // 继续将栈顶元素弹出
+```
+5. 复合变换示例代码：
+``` c++
+    glLoadIdentity();
+    
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, -5.0f); // 此时栈顶元素由单位矩阵转换为沿z轴方向平移-5的矩阵
+    glPushMatrix(); // 此时将刚刚发生平移的矩阵拷贝了一份
+    glRotatef(30.0f, 0.0f, 1.0f, 0.0f); // 此时将沿y轴进行旋转与平移矩阵合并成一个复合矩阵，先平移，再旋转
+    DrawTriangleModel(); // 绘制图形
+    glPopMatrix();
+    glPopMatrix(); // 调用两次出栈处理，执行后当前为单位矩阵
+    
+    // 另外将两个运动互换顺序，那么得到的图形会与其不同，这就涉及到矩阵的相乘（交换法不能成立的问题）结果不一致的问题。另外也可以用具象的方式进行想象，因为物体的平移和选择都是沿着坐标轴来进行的，从想象的动画中可以判断出两种运动的顺序不同得到的结果也不同
+    
+    glPushMatrix();
+    glRotatef(30.0f, 0.0f, 1.0f, 0.0f);
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, -5.0f);
+    DrawTriangleModel();
+    glPopMatrix();
+    glPopMatrix();
+```
 ## 照相机基础
 
 ## 纹理基础
