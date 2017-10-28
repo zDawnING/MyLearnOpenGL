@@ -364,6 +364,88 @@ public:
 
 5. 可以观察到物体表面的光有：环境光 + 漫反射 + 镜面反射。另外物体材质对光线的反射也不尽相同，因此有对应的反射系数（mr, mg, mb, ma）,假设环境光的颜色为（r,g,b,a）,此时反射至我们眼中的颜色为（r * ma, g * mg, b * mb, a * ma）
 
+6. 根据上面定义一个光源类，示例代码：
+``` c++
+// 该类是作为各种灯光的基类
+class Light {
+protected:
+    GLenum mLightIdentifier;
+    Light(); // 不允许外部创建基类对象，基类仅是通用属性的集合
+
+public:
+    
+    void setAmbientColor(float r, float g, float b, float a); // 设置环境光
+    
+    void setDiffuseColor(float r, float g, float b, float a); // 设置漫反射
+    
+    void setSpecularColor(float r, float g, float b, float a); // 设置镜面反射
+    
+    void Enable(); // 启动光源方法
+    
+};
+```
+2. 光源目前可以定义为3种：方向光，点光源，探照灯
+* 方向光：派生自光源，主要特性是齐次坐标为0
+``` c++
+class DirectionLight :public Light {
+public:
+    
+    DirectionLight(GLenum light); // 参数标识使用opengl提供的入门级别的哪盏灯
+    
+    // 方向光只需要提供方向即可(能量不会衰减的)
+    void setPosition(float x, float y, float z);
+
+};
+```
+* 点光源：派生自光源，主要特性是光照的能量是会衰减的，因此需要有各种衰减系数
+``` c++
+class PointLight :public Light {
+    
+    float mPosition[3]; // 存储光源的位置，防止移动相机时光源移动问题
+    
+public:
+    
+    PointLight(GLenum light);
+    
+    void setPosition(float x, float y, float z);
+    
+    /**
+     c:常数衰减因子 (缺省值：1.0)
+     l:线性衰减因子 （0.0）
+     q:平方衰减因子 （0.0）
+     d:受光点与光源的距离 
+     
+     f = 1 / ( c + l * d + q * q * d )
+     
+     光的亮度：初始亮度 * f
+     
+     @param v 衰减因子
+     */
+    void setConstAttenuation(float v);  // 设置常数衰减系数
+    
+    void setLinearAttenuation(float v); // 设置线性衰减系数
+    
+    void setQuadricAttenuation(float v); // 设置平方衰减系数
+    
+    void update(float x, float y, float z); // 传入相机位置更新光源坐标
+};
+```
+* 探照灯：派生自点光源，探照灯是带约束的点光源，额外属性有方向，聚光度，照射范围
+``` c++
+class SpotLight :public PointLight {
+public:
+    
+    SpotLight(GLenum light);
+    
+    void setDirection(float x, float y, float z); // 设置方向，是一个向量
+    
+    void setExponent(float v); // 设置聚光度, 照射范围内，某一个范围的光是不衰减的，这里是设置哪一个范围内，这是个角度
+    
+    void setCutoff(float v); // 设置照射范围，这个也是个角度，一旦超出这个范围，物体完全不受光
+    
+    void update(float x, float y, float z); // 传入相机位置更新光源坐标
+};
+```
 ## 3D漫游基础
 
 ## 2D摄像机
