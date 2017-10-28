@@ -241,6 +241,36 @@
 
 ## 纹理基础
 
+1. 如果要创建纹理贴图，设置好创建2D纹理对象的工具是必不可少的。如在.mm中创建加载文件的通用函数，在工具文件中添加解码图片函数并将像素数据构建成纹理对象。
+
+2. 将像素数据转换成纹理对象的过程：申请纹理对象 -> 设定纹理过滤算法和额外配置 -> 将像素数据上传拷贝至GPU（含自定配置）-> 最后把当前纹理设置为0号纹理，以免后面某些操作对纹理对象产生影响而被修改 -> 返回纹理对象即可。
+
+3. 开启2D纹理，绑定纹理对象，根据纹理坐标（默认坐标）设置进行纹理的绘制。示例代码：
+``` c++
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glBegin(GL_QUADS);
+    glColor4ub(255, 255, 255, 255);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.1f, -0.1f, -0.4f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(0.1f, -0.1f, -0.4f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(0.1f, 0.1f, -0.4f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-0.1f, 0.1f, -0.4f);
+    glEnd();
+    
+    // 修改纹理贴图坐标，修改背景颜色
+    glClearColor(0.0f, 0.4f, 0.6f, 1.0f); // 擦除背景使用的颜色
+    glClear(GL_COLOR_BUFFER_BIT); // 擦除【颜色缓存区】
+    
+    glBegin(GL_QUADS);
+    glColor4ub(94, 165, 252, 255); // 这里使用蓝色会发生纹理和蓝色的混合
+    // 以下放大了纹理坐标的值（1.5），此时（1，1）坐标并不在物体边缘而在中间位置, 如果应用的是clamp过滤方式，大于1.0的地方应用了纹理边缘的颜色
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-0.1f, -0.1f, -0.4f);
+    glTexCoord2f(1.5f, 0.0f); glVertex3f(0.1f, -0.1f, -0.4f);
+    glTexCoord2f(1.5f, 1.5f); glVertex3f(0.1f, 0.1f, -0.4f);
+    glTexCoord2f(0.0f, 1.5f); glVertex3f(-0.1f, 0.1f, -0.4f);
+    glEnd();
+```
+
 ## 缓冲区基础
 
 ## 天空盒基础
