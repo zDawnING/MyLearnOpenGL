@@ -448,6 +448,104 @@ public:
 ```
 ## 3D漫游基础
 
+1. 先定义好一个向量类，这个向量需要执行向量的加减乘除，点乘，叉乘等等，因此有以下较完善的方法定义：
+``` c++
+class Vector3 {
+public:
+    float x, y, z;
+    
+// 构造函数
+    
+    // 默认构造函数不做任何处理
+    Vector3();
+    
+    // 复制构造函数
+    Vector3(const Vector3 &a);
+    
+    // 带参数的构造函数，用三个值完成初始化
+    Vector3(float nx, float ny, float nz);
+
+// 标准对象操作
+    
+    // 重载赋值运算符，返回引用，实现左值
+    Vector3 &operator = (const Vector3 &a);
+    
+    // 重载 == 操作符
+    bool operator == (const Vector3 &a) const;
+    
+    // 重载 != 操作符
+    bool operator != (const Vector3 &a) const;
+    
+// 向量运算
+    
+    // 置为零向量
+    void zero();
+    
+    // 重载一元 - 运算符
+    Vector3 operator - () const;
+    
+    // 重载二元 + 和 - 运算符
+    Vector3 operator + (const Vector3 &a) const;
+    
+    Vector3 operator - (const Vector3 &a) const;
+    
+    // 与标量的乘除法
+    Vector3 operator * (float a) const;
+    
+    Vector3 operator / (float a) const;
+    
+    // 重载自反运算符
+    Vector3 &operator += (const Vector3 &a);
+    
+    Vector3 &operator -= (const Vector3 &a);
+    
+    Vector3 &operator *= (const Vector3 &a);
+    
+    Vector3 &operator /= (const Vector3 &a);
+    
+    // 向量标准化
+    void normalize ();
+    
+    // 向量点乘，重载标准的乘法运算符
+    float operator * (const Vector3 &a) const;
+    
+};
+```
+2. 定义一个相机类
+* 属性：前后左右的移动标识，相机所在位置，看世界坐标系的那个点， 垂直于头顶发射出去的向量
+* 方法：pitch方法（上下旋转，绕着自身的x轴旋转），yaw（左右旋转，绕着世界坐标轴的y轴旋转的（非自身）），更新相机状态，相机绕任意轴任意角度旋转
+
+3. 实现通过键盘控制摄像机前后左右移动，这里不建议单纯只使用偏移量来控制，而应该通过向量来处理
+* 首先在scene中定义好键盘按下和弹起的方法，根据传入的ascii码来识别按键，然后更改camera对象中的前后左右标识。通用的键盘按键监听方法：
+``` c++
+// 重载该方法并开启，才能收到消息
+-(BOOL)acceptsFirstResponder{
+    return YES;
+}
+-(void)keyDown:(NSEvent *)event{
+    onKeyDown([event.characters UTF8String][0]-32); // 获取当前键盘触发字符，-32即将小写变大写,mac中接收到的是小写
+}
+-(void)keyUp:(NSEvent *)event{
+    onKeyUp([event.characters UTF8String][0]-32);
+}
+```
+4. 更新相机状态时，（这里实现相机的前后左右移动）
+  1. 必须先求得当前相机的坐标系的x,y,z各个单位向量
+  * y轴正方向是相机头顶发射出去的向量
+  * z轴正方向是由看向世界坐标系的点指向相机位置的向量 
+  * x轴正方向是由以上两个向量根据向量的叉乘（右手法则）可得
+  
+  2. 偏移位移 = 方向向量 * 时间（间隔）* 移动速度，然后用该位移叠加至当前相机的位置和观察的点的属性值
+
+5. 实现相机绕任意轴任意角度旋转
+  1. 可用`绕任意轴的3D旋转矩阵的公式`求取旋转后的各个方向的基向量变换坐标
+  2. 通过分别将各个基向量与之前的视线方向向量点乘求取对应新视点的坐标，即已求得相机位置指向新视点的方向向量
+  3. 在世界坐标系中，新的视点坐标（理解为向量） = 相机位置（理解为向量）+ 新视点方向向量
+  4. pitch方法是改变俯仰角来使相机发生上下旋转的，故是绕着自身的x轴进行旋转的，通过上面的组合方法传入要变换的x轴基向量和转换角度即可
+  5. yaw方法是改变偏航角来使相机发生作用旋转的，自身从头顶向上的向量一直保持不变，此时直接传入该向量和转换角度即可
+  6. 关于鼠标偏移量与俯仰角或偏航角的关系可由 x / sin(x) = 1 可以推断当x趋近于无穷小时，x = sin(x), 另外假设三角形中斜边为r,角x的对边为d,则有等式 sin(x) = d / r ，当r=1时，等式为 sin(x) = d，d在这里可以理解为旋转发生的偏转位移，那么当 d 为无穷小时，x = d, 所以鼠标偏移量在无穷小的情况下，可以用偏移量代表俯仰角或偏航角的值。求无穷小则可用：当前偏移量 / 最远处位置，另外代表的角度要根据右手法则判断方向来定正负值。
+  
+
 ## 2D摄像机
 
 ## 粒子系统基础
