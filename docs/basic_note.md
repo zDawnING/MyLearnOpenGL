@@ -547,6 +547,31 @@ public:
 * yaw方法是改变偏航角来使相机发生作用旋转的，自身从头顶向上的向量一直保持不变，此时直接传入该向量和转换角度即可
 * 关于鼠标偏移量与俯仰角或偏航角的关系可由 x / sin(x) = 1 可以推断当x趋近于无穷小时，x = sin(x), 另外假设三角形中斜边为r,角x的对边为d,则有等式 sin(x) = d / r ，当r=1时，等式为 sin(x) = d，d在这里可以理解为旋转发生的偏转位移，那么当 d 为无穷小时，x = d, 所以鼠标偏移量在无穷小的情况下，可以用偏移量代表俯仰角或偏航角的值。求无穷小则可用：当前偏移量 / 最远处位置，另外代表的角度要根据右手法则判断方向来定正负值。
   
+6. 鼠标事件触发控制示例代码：
+``` c++
+// 重载点击鼠标右键的按下的事件
+-(void)rightMouseDown:(NSEvent *)event{
+    CGEventRef ourEvent = CGEventCreate(NULL); // 创建鼠标对象
+    originalPos = CGEventGetLocation(ourEvent); // 获取鼠标全局的位置（非相对窗口位置）
+    CFRelease(ourEvent); // 释放该对象
+    rotateView = true;
+    lastPos = originalPos;
+}
+-(void)rightMouseUp:(NSEvent *)event{
+    rotateView = false;
+    CGDisplayMoveCursorToPoint(kCGDirectMainDisplay, originalPos); // 鼠标复原至它按下的位置中
+}
+-(void)rightMouseDragged:(NSEvent *)event{
+    CGEventRef ourEvent = CGEventCreate(NULL);
+    CGPoint point = CGEventGetLocation(ourEvent); // 当鼠标发生偏移的时候重新获取点
+    CFRelease(ourEvent);
+    if(rotateView){ // 只有在旋转视口的时候才进行处理
+        onMouseMove(point.x - lastPos.x, point.y - lastPos.y); // 当前鼠标位置-上一次鼠标位置 = 偏移
+        lastPos = point; // 将历史记录设置为新的位置
+    }
+}
+```
+
 ## 2D摄像机
 
 ## 粒子系统基础
