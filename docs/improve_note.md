@@ -96,7 +96,9 @@ modelMatrixLocation = glGetUniformLocation(program, "ModelMatrix"); // 参数为
 
 6. 绘制方法中：
     1. 使用创建好的shader程序，然后为程序设置uniform变量。如果有纹理设置，直接把要设置的纹理对象设置成为当前纹理，把纹理对象与插槽对应起来即可。
+    
     2. 把vbo设置成绘制图形的数据集（shader在绘制时从vbo中取数据）, 分别启用attribute属性的插槽，并设置每个值的取值位置。
+    
     3. 绘制图形。下面区分vbo和ebo不同的绘制方法示例：
     
 ``` c++
