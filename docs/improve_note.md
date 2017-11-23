@@ -4,7 +4,9 @@
 （后面看书后再重新更改）
 
 > 环境：Mac OSX 系统, Xcode
-> 使用类库：`libsoil`:OpenGL图像库,辅助处理各种格式的纹理贴图并生成纹理对象；`GLM`:OpenGL Mathematics（矩阵库），辅助生成各种向量和矩阵等算法。
+> 使用类库：
+>`libsoil`:OpenGL图像库,辅助处理各种格式的纹理贴图并生成纹理对象；
+>`GLM`:OpenGL Mathematics（矩阵库），辅助生成各种向量和矩阵等算法。
 
 ## VertexBufferObject的使用（VBO）
 从CPU将数据传至GPU后，无法再用C/C++语言进行对上传的数据进行变更，因此我们需要一个从CPU到GPU的通讯手段，就是VBO
@@ -90,10 +92,32 @@ positionLocation = glGetAttribLocation(program, "position"); // 参数为attribu
 modelMatrixLocation = glGetUniformLocation(program, "ModelMatrix"); // 参数为uniform的参数名
 ```
 
-5. 
+5. 设置MVP矩阵，可以直接使用GLM中的mat4来创建MVP三个矩阵，投影矩阵需要初始化设置，另外两个矩阵直接是单位矩阵即可。
 
-6. 
+6. 绘制方法中：
+    1. 使用创建好的shader程序，然后为程序设置uniform变量。如果有纹理设置，直接把要设置的纹理对象设置成为当前纹理，把纹理对象与插槽对应起来即可。
+    2. 把vbo设置成绘制图形的数据集（shader在绘制时从vbo中取数据）, 分别启用attribute属性的插槽，并设置每个值的取值位置。
+    3. 绘制图形。下面区分vbo和ebo不同的绘制方法示例：
+    ``` c++
+    // 三角形绘制
+    
+    // 把vbo设置成绘制图形的数据集,就是shader在绘制时从vbo中取数据
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    // 绘制三角形，每3个点绘制成一个面，参数1：从第几个点开始；2是绘制多少个点
+    glDrawArrays(GL_TRIANGLES, 0, 3); // 该方法在GPU端会遍历vbo中的数据，并且分别传入shader(shader已经分别拿到不同的点，它们的M,V,P矩阵是一模一样的，GPU中是有多个核心的，那么对于数据中的这3个点会同时地在某3个核中执行，)
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    // 把ebo设置成绘制图形的数据集
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    // 参数1是绘制三角形；2是取出ebo中的索引信息中的3个来绘制；3是数据类型; 4是数据起始位置
+    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    
+    // 绘制执行完毕后，要把当前程序设置成0号程序
+    glUseProgram(0);
+    
+    ```
 
-7. 
+
 
 
