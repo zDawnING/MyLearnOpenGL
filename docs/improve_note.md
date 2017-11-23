@@ -42,17 +42,21 @@
 
 1. 编写shader
 
-基础的shader有两个：`vertexShader`, `fragmentShader`, 文件资源后缀分别为vs,fs
-`vertexShader` 的基本属性类型：
-1.attribute 一般放置位置数据，顶点颜色，纹理坐标，法线数据等;
-2.uniform 一般放置MVP矩阵（ModelMatrix, ViewMatrix, ProjectionMatrix）;
-3.varying 用于与fragmentShader共享数据，一般放置顶点颜色，纹理坐标等。
-`fragmentShader` 的基本属性类型：
-1.uniform: 一般放置纹理采样器（type为sampler2D）, 各种用于渲染的向量数据或光照参数等；
-2.varying: 同vertexShader
+    基础的shader有两个：`vertexShader`, `fragmentShader`, 文件资源后缀分别为vs,fs
+    
+    `vertexShader` 的基本属性类型：
+    1. attribute 一般放置位置数据，顶点颜色，纹理坐标，法线数据等;
+    2. uniform 一般放置MVP矩阵（ModelMatrix, ViewMatrix, ProjectionMatrix）;
+    3. varying 用于与fragmentShader共享数据，一般放置顶点颜色，纹理坐标等。
+    
+    `fragmentShader` 的基本属性类型：
+    1. uniform: 一般放置纹理采样器（type为sampler2D）, 各种用于渲染的向量数据或光照参数等；
+    2. varying: 同vertexShader
 
 vs中给`gl_Position`设置MVP转换后的顶点数据
+
 vs中顶点数据经过MVP矩阵计算过后，会将顶点数据从三维空间转换至屏幕显示出来
+
 vs会被GPU调用执行，执行原理：vbo代表显存上的一个空间，与CPU不同，GPU的核心是非常多的（集成显卡一般有40几个核心，独显就好几百个），因此显卡的计算能力比CPU大很多，shader其实属于程序，需要再显卡中的核中运行的，当我们调用绘制指令绘制三角形的时候，三个顶点数据同时被GPU中的某三个核执行vertexShader, 只不过它们得到的数据不一样，是分别得到三个点。当执行完毕后，则执行fragmentShader阶段。所有shader在GPU上运行时并行的。
 
 fs中文件头最好加入兼容判断,保证该shader可以跨平台,示例：
