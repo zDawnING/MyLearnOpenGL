@@ -79,6 +79,9 @@
     shader中有个插槽概念，插槽的排列是从0开始的，opengl会把变量与插槽对应上，例如：attribute会与对应该种变量的0号插槽，uniform就会对应uniform变量中的0~2号插槽，因此要设置这些变量即是告诉GPU哪个插槽放哪个数据
     示例代码：
     ``` c++
+    // 声明插槽
+    GLint positionLocation, modelMatrixLocation;
+    
     positionLocation = glGetAttribLocation(program, "position"); // 参数为attribute的参数名
     modelMatrixLocation = glGetUniformLocation(program, "ModelMatrix"); // 参数为uniform的参数名
     ```
