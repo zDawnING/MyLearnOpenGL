@@ -53,19 +53,19 @@
     1. uniform: 一般放置纹理采样器（type为sampler2D）, 各种用于渲染的向量数据或光照参数等；
     2. varying: 同vertexShader
 
-vs中给`gl_Position`设置MVP转换后的顶点数据
+    vs中给`gl_Position`设置MVP转换后的顶点数据
 
-vs中顶点数据经过MVP矩阵计算过后，会将顶点数据从三维空间转换至屏幕显示出来
+    vs中顶点数据经过MVP矩阵计算过后，会将顶点数据从三维空间转换至屏幕显示出来
 
-vs会被GPU调用执行，执行原理：vbo代表显存上的一个空间，与CPU不同，GPU的核心是非常多的（集成显卡一般有40几个核心，独显就好几百个），因此显卡的计算能力比CPU大很多，shader其实属于程序，需要再显卡中的核中运行的，当我们调用绘制指令绘制三角形的时候，三个顶点数据同时被GPU中的某三个核执行vertexShader, 只不过它们得到的数据不一样，是分别得到三个点。当执行完毕后，则执行fragmentShader阶段。所有shader在GPU上运行时并行的。
+    vs会被GPU调用执行，执行原理：vbo代表显存上的一个空间，与CPU不同，GPU的核心是非常多的（集成显卡一般有40几个核心，独显就好几百个），因此显卡的计算能力比CPU大很多，shader其实属于程序，需要再显卡中的核中运行的，当我们调用绘制指令绘制三角形的时候，三个顶点数据同时被GPU中的某三个核执行vertexShader, 只不过它们得到的数据不一样，是分别得到三个点。当执行完毕后，则执行fragmentShader阶段。所有shader在GPU上运行时并行的。
 
-fs中文件头最好加入兼容判断,保证该shader可以跨平台,示例：
-```
-#ifdef GL_ES
-precision mediump float; // 定义浮点数精度
-#endif
-```
-fs中给`gl_FragColor`设置颜色或纹理贴图（可叠加），当过程到达这里的时候，opengl已经将三个点变成了面，因为这里要处理的是面这个问题，这个面的所有像素都会被fragment处理（同样并行），vertexShader处理的是三个顶点数据，fragment上是生成这三角形的所有像素（运算量巨大）
+    fs中文件头最好加入兼容判断,保证该shader可以跨平台,示例：
+    ```
+    #ifdef GL_ES
+    precision mediump float; // 定义浮点数精度
+    #endif
+    ```
+    fs中给`gl_FragColor`设置颜色或纹理贴图（可叠加），当过程到达这里的时候，opengl已经将三个点变成了面，因为这里要处理的是面这个问题，这个面的所有像素都会被fragment处理（同样并行），vertexShader处理的是三个顶点数据，fragment上是生成这三角形的所有像素（运算量巨大）
 
 2. 编译shader
 
