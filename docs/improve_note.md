@@ -80,9 +80,7 @@
     如何将文件中的顶点数据和MVP矩阵设置到shader当中（shader是运行在GPU上的）？
     
     因此需要获取shader中的变量（如attribute，uniform），并明确获取到的是什么东西。
-    
-    shader中有个插槽概念，插槽的排列是从0开始的，opengl会把变量与插槽对应上，例如：attribute会与对应该种变量的0号插槽，uniform就会对应uniform变量中的0~2号插槽，因此要设置这些变量即是告诉GPU哪个插槽放哪个数据
-    示例代码：
+    shader中有个插槽概念，插槽的排列是从0开始的，opengl会把变量与插槽对应上，例如：attribute会与对应该种变量的0号插槽，uniform就会对应uniform变量中的0~2号插槽，因此要设置这些变量即是告诉GPU哪个插槽放哪个数据。示例代码：
     ``` c++
     // 声明插槽
     GLint positionLocation, modelMatrixLocation;
