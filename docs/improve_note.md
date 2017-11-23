@@ -73,11 +73,19 @@
 3. 链接成程序
     流程：创建程序对象，将编译好的vs对象和fs对象绑定至程序上，链接程序，从程序上解绑两个shader对象。（期间可监听程序链接状态并打印相关错误日志，方便调错）
 
-4. 将程序上传至GPU
+4. 获取程序中的变量（插槽）
+    如何将文件中的顶点数据和MVP矩阵设置到shader当中（shader是运行在GPU上的）？
+    因此需要获取shader中的变量（如attribute，uniform），并明确获取到的是什么东西。
+    shader中有个插槽概念，插槽的排列是从0开始的，opengl会把变量与插槽对应上，例如：attribute会与对应该种变量的0号插槽，uniform就会对应uniform变量中的0~2号插槽，因此要设置这些变量即是告诉GPU哪个插槽放哪个数据
+    示例代码：
+    ``` c++
+    positionLocation = glGetAttribLocation(program, "position"); // 参数为attribute的参数名
+    modelMatrixLocation = glGetUniformLocation(program, "ModelMatrix"); // 参数为uniform的参数名
+    ```
 
-5. 获取程序中的变量（插槽）
+5. 
 
-6. 设置MVP矩阵
+6. 
 
 7. 
 
