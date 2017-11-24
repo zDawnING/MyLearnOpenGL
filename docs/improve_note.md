@@ -5,6 +5,7 @@
 
 > 环境：Mac OSX 系统, Xcode
 > 使用类库：
+>
 >`libsoil`:OpenGL图像库,辅助处理各种格式的纹理贴图并生成纹理对象；
 >`GLM`:OpenGL Mathematics（矩阵库），辅助生成各种向量和矩阵等算法。
 
@@ -121,7 +122,43 @@ modelMatrixLocation = glGetUniformLocation(program, "ModelMatrix"); // 参数为
     glUseProgram(0);
 
     ```
+## 面向对象封装
+上面已经是使用shader进行GPU绘制的基本流程了，但是如果将上面的代码都统一写在全局初始化和绘制方法中，代码会非常臃肿。
+下面是一些封装思路：
 
+1. 将创建vbo或者ebo的过程封装成工具方法。注意：如果要创建ebo,首先要创建好vbo，再创建ebo来控制vbo中的点的绘制顺序。
+``` c++
+/**
+ 封装好创建vbo或者ebo的代码
 
+ @param bufferType array_buffer/element_buffer
+ @param size       buffer_size
+ @param usage      static_draw/dynamic_draw
+ @param data       data数据
 
+ @return vbo对象或者ebo对象
+ */
+GLuint CreateBufferObject(GLenum bufferType, GLsizeiptr size, GLenum usage, void*data=nullptr);
+```
+2. VertexBuffer类（用于存储并设置顶点相关数据，存储vbo）
+
+    1. 结构体：Vertex (包含position, color, texcoord, normal等)
+    
+    2. 顶点数据大对象（包含多个Vertex）
+    
+    3. vbo数据、设置顶点数据的、绑定vbo和解绑等方法
+
+3. Shader类 （包括shader对象和程序的整个创建流程）
+
+    1. 结构体1：UniformTexture 用于存储创建纹理对象时需要的插槽和纹理对象
+    
+    2. 结构体2：UniformVector4f 用于存储各种用于算法计算的vec4变量数据和对应插槽
+    
+    3. 程序对象、对应上面两个结构体类型的容器，属性插槽、MVP矩阵插槽，以及与这些对应的设置方法。
+    
+4. Model类（统称，可根据类型划分多种类） （放置在场景中的所有模型，包括地面，天空盒，粒子等等）
+ 
+    1. VertexBuffer对象、模型矩阵(M)、Shader对象、以及其他各个种类的模型所需要的特定属性
+    
+    2. 初始化方法、绘制方法、以及其他各个种类的模型所需要的特定方法
 
