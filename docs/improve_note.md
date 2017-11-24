@@ -157,7 +157,8 @@ GLuint CreateBufferObject(GLenum bufferType, GLsizeiptr size, GLenum usage, void
 
     3. 程序对象、对应上面两个结构体类型的容器，属性插槽、MVP矩阵插槽，以及与这些对应的设置方法。
     
-    
+    
+    
 4. Model类（统称，可根据类型划分多种类） （放置在场景中的所有模型，包括地面，天空盒，粒子等等）
  
     1. VertexBuffer对象、模型矩阵(M)、Shader对象、以及其他各个种类的模型所需要的特定属性
