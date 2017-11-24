@@ -98,7 +98,22 @@ modelMatrixLocation = glGetUniformLocation(program, "ModelMatrix"); // 参数为
 5. 设置MVP矩阵，可以直接使用GLM中的mat4来创建MVP三个矩阵，投影矩阵需要初始化设置，另外两个矩阵直接是单位矩阵即可。
 
 6. 绘制方法中：
-    1. 使用创建好的shader程序，然后为程序设置uniform变量。如果有纹理设置，直接把要设置的纹理对象设置成为当前纹理，把纹理对象与插槽对应起来即可。
+    1. 使用创建好的shader程序，然后为程序设置uniform变量。如果有纹理设置，直接把要设置的纹理对象设置成为当前纹理(对于单个纹理来说)，把纹理对象与插槽对应起来即可。如果要设置多个纹理，由于shader中的属性都是与插槽相对应的，在纹理设置的时候它有额外的一组插槽叫纹理单元，而纹理对象则是图片中的像素，首先要先激活纹理单元（从0号位开始的）。示例代码：
+    ``` c++
+    // 声明一个容器存储多张纹理
+    std::map<std::string, UniformTexture*> mUniformTextures;
+    
+    // 下面设置多个纹理对象
+    int iIndex = 0;
+    for (auto iter = mUniformTextures.begin(); iter != mUniformTextures.end(); iter++) {
+        // 激活对应的纹理单元，另外：glActiveTexture(GL_TEXTURE0~N) = glActiveTexture(GL_TEXTURE0 + N),N为正整数
+        glActiveTexture(GL_TEXTURE0 + iIndex);
+        // 把纹理对象设置为当前的纹理对象，同时它也会指派给当前激活了的纹理单元
+        glBindTexture(GL_TEXTURE_2D, iter->second->mTexture);
+        // 设置好哪个插槽应该去第几个纹理单元中采集纹理，由于插槽是跟sampler2D关联上的，因此sampler2D知道去哪里采集纹理
+        glUniform1i(iter->second->mLocation, iIndex++);
+    }
+    ```
 
     2. 把vbo设置成绘制图形的数据集（shader在绘制时从vbo中取数据）, 分别启用attribute属性的插槽，并设置每个值的取值位置。
 
