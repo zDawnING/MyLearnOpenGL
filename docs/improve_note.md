@@ -163,4 +163,6 @@ GLuint CreateBufferObject(GLenum bufferType, GLsizeiptr size, GLenum usage, void
     1. VertexBuffer对象、模型矩阵(M)、Shader对象、以及其他各个种类的模型所需要的特定属性
 
     2. 初始化方法、绘制方法、以及其他各个种类的模型所需要的特定方法
+    
+
 
