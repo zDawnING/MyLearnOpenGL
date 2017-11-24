@@ -6,6 +6,7 @@
 > 环境：Mac OSX 系统, Xcode
 > 
 > 使用类库：
+>
 >`libsoil`:OpenGL图像库,辅助处理各种格式的纹理贴图并生成纹理对象；
 >
 >`GLM`:OpenGL Mathematics（矩阵库），辅助生成各种向量和矩阵等算法。
