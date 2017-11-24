@@ -128,7 +128,7 @@ modelMatrixLocation = glGetUniformLocation(program, "ModelMatrix"); // 参数为
 上面已经是使用shader进行GPU绘制的基本流程了，但是如果将上面的代码都统一写在全局初始化和绘制方法中，代码会非常臃肿。
 下面是一些封装思路：
 
-1. 将创建vbo或者ebo的过程封装成工具方法。注意：如果要创建ebo,首先要创建好vbo，再创建ebo来控制vbo中的点的绘制顺序。
+1. 将创建vbo或者ebo的过程封装成工具方法。注意：如果要创建ebo,首先要创建好vbo，再创建ebo来控制vbo中的点的绘制顺序。另外shader编译的流程同样可以封装。
 ``` c++
 /**
  封装好创建vbo或者ebo的代码
