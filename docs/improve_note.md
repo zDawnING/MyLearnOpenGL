@@ -110,7 +110,7 @@ modelMatrixLocation = glGetUniformLocation(program, "ModelMatrix"); // 参数为
         glActiveTexture(GL_TEXTURE0 + iIndex);
         // 把纹理对象设置为当前的纹理对象，同时它也会指派给当前激活了的纹理单元
         glBindTexture(GL_TEXTURE_2D, iter->second->mTexture);
-        // 设置好哪个插槽应该去第几个纹理单元中采集纹理，由于插槽是跟sampler2D关联上的，因此sampler2D知道去哪里采集纹理
+        // 设置好哪个插槽应该去第几个纹理单元中采集纹理，由于插槽是跟sampler2D关联上的，因此让sampler2D知道去哪里采集纹理
         glUniform1i(iter->second->mLocation, iIndex++);
     }
     ```
