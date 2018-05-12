@@ -5,5 +5,5 @@
 > `若文档或demo有错误，欢迎提交issue指出`
 
 ## FSViewer Demo Preview
-![image FSViewer Demo](http://ovwfvn3zo.bkt.clouddn.com/QQ20180513-074700-HD.gif)
+![image FSViewer Demo](http://ovwfvn3zo.bkt.clouddn.com/QQ20180513-075430@2x.png)
 
