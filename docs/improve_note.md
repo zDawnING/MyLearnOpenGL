@@ -670,4 +670,91 @@ void main(){
 
 > 这个光照模型的处理是不使用shader中reflect的内置方法，从reflect的原理上理解，对每一束光都求他的被反射过来的方向，这样的性能消耗非常大，因此我们可以采用视线方向与物体指向光源的方向相加，由向量相加的几何意义可以求得的模拟反射向量是比较接近reflect所求得的向量的，因此在顶点着色器中使用blin光照模型模拟镜面反射可以极大得降低性能的消耗
 
+## 雾化
+
+目前会制作的雾有两种，一种是`线性雾`，另外一种是`指数雾`
+
+> 我们视线所看到的雾，本质是眼睛与物体间的光线受到大量粒子的扰动，一些原来直线传播无法进入眼睛的光线，被那些粒子反射而进入眼睛，这就是我们说看到成块状的微小粒子的的雾，视觉效果上是物体的颜色向雾的颜色偏移，粒子越大，偏移越大。
+
+因此我们所得到的雾是有最近和最远的距离的，并且这个距离是以眼睛为标准的。
+
+### 线性雾化
+在线性雾化中，某一点的雾化程度取决于它与视点之间的距离，距离越远雾化程度越高。起点表示开始雾化，终点表示完全雾化，两点之间的某一点雾化程度与该视点的距离呈线性关系。某一点的雾化程度可以定义为`雾化因子`.
+
+> `雾化因子 = (终点 - 当前点与视点的距离) / (终点 - 起点)， （起点 <= 当前点与视点的距离 <= 终点）`
+
+如果雾化因子为1.0，该点完全没有被雾化，可以很清晰地看到此处的物体，如果是0.0，则该点完全被雾化，此处物体看不见。
+由此可得fragmentShader中根据雾化因子计算片元的颜色则为：
+
+> `片元颜色 = 物体表面颜色 x 雾化因子 + 雾的颜色 x (1 - 雾化因子)`
+
+示例shader代码：
+> vertexShader
+``` c++
+attribute vec4 a_Position;
+attribute vec2 a_TexCoord;
+
+uniform mat4 u_MVPMatrix;
+
+uniform mat4 u_ModelMatrix;
+uniform vec4 u_Eye;
+
+varying float v_Dist;
+varying vec2 v_TexCoord;
+
+void main(){
+	gl_Position = u_MVPMatrix * a_Position;
+	v_TexCoord = a_TexCoord;
+	// 计算顶点与视点之间的距离, 这样计算对性能消耗太大
+	// v_Dist = distance(u_ModelMatrix * a_Position, u_Eye);
+	v_Dist = gl_Position.w; // 这种性能虽好，但是会有一个不好的副作用，某一点的雾浓度可能因相机的朝向而改变，现实中不可能存在
+}
+```
+> fragmentShader
+``` c++
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform sampler2D u_Sampler;
+uniform vec3 u_FogColor; // 雾的颜色
+uniform vec2 u_FogDist; // 雾的起点和终点
+
+varying float v_Dist;
+varying vec2 v_TexCoord;
+
+void main(){
+	// 计算雾化因子
+	float fogFactor = clamp( (u_FogDist.y - v_Dist) / (u_FogDist.y - u_FogDist.x), 0.0, 1.0);
+	// 纹理颜色
+	vec4 texture = texture2D(u_Sampler, v_TexCoord);
+	// 混合后的颜色, 这里mix公式: x * (1 - z) + y * z
+	vec3 mixColor = mix(u_FogColor, vec3(texture.rgb), fogFactor);
+	vec4 color = vec4(mixColor, 1.0);
+	gl_FragColor = color;
+}
+```
+
+### 指数雾
+
+雾化的核心已经在线性雾中体现了，而指数雾实际上是表面雾本身是非线性变化的，而且是在不同方向上有可能也不一样，因此只要修改雾化因子公式即可。
+这里增加一个缩放系数u_FogDist.z, 要想知道雾是如何变化的，自己绘制图像即可
+
+` float fogFactor = clamp( exp(-(v_Dist * u_FogDist.z)), 0.0, 1.0); `
+
+这里还有另外一种复杂度更高的雾，在u_FogDist.w = 1时，可等价于上面的雾
+
+` float fogFactor = clamp( exp(-pow((v_Dist * u_FogDist.z),u_FogDist.w)), 0.0, 1.0); `
+
+
+
+
+
+
+
+
+
+
+
+
 
