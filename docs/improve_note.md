@@ -50,7 +50,7 @@
     
     `vertexShader` 的基本属性类型：
     1. attribute 一般放置位置数据，顶点颜色，纹理坐标，法线数据等;
-    2. uniform 一般放置MVP矩阵（ModelMatrix, ViewMatrix, ProjectionMatrix）;
+    2. uniform 一般放置MVP矩阵（ModelMatrix, ViewMatrix, ProjectionMatrix）；
     3. varying 用于与fragmentShader共享数据，一般放置顶点颜色，纹理坐标等, 这里的值经过顶点着色器后会进行线性插值处理。
     
     `fragmentShader` 的基本属性类型：
