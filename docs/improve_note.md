@@ -50,7 +50,9 @@
     
     `vertexShader` 的基本属性类型：
     1. attribute 一般放置位置数据，顶点颜色，纹理坐标，法线数据等;
-    2. uniform 一般放置MVP矩阵（ModelMatrix, ViewMatrix, ProjectionMatrix）；
+    
+    2. uniform 一般放置MVP矩阵（ModelMatrix, ViewMatrix, ProjectionMatrix）;
+    
     3. varying 用于与fragmentShader共享数据，一般放置顶点颜色，纹理坐标等, 这里的值经过顶点着色器后会进行线性插值处理。
     
     `fragmentShader` 的基本属性类型：
@@ -98,6 +100,7 @@ modelMatrixLocation = glGetUniformLocation(program, "ModelMatrix"); // 参数为
 
 6. 绘制方法中：
     1. 使用创建好的shader程序，然后为程序设置uniform变量。如果有纹理设置，直接把要设置的纹理对象设置成为当前纹理(对于单个纹理来说)，把纹理对象与插槽对应起来即可。如果要设置多个纹理，由于shader中的属性都是与插槽相对应的，在纹理设置的时候它有额外的一组插槽叫纹理单元，而纹理对象则是图片中的像素，首先要先激活纹理单元（从0号位开始的）。示例代码：
+    
     ``` c++
     // 声明一个容器存储多张纹理
     std::map<std::string, UniformTexture*> mUniformTextures;
@@ -165,6 +168,7 @@ GLuint CreateBufferObject(GLenum bufferType, GLsizeiptr size, GLenum usage, void
     3. vbo数据、设置顶点数据的、绑定vbo和解绑等方法
 
 示例代码：
+
 ``` c++
 struct Vertex{
     float position[4];
@@ -264,6 +268,7 @@ public:
     3. 程序对象、对应上面两个结构体类型的容器，属性插槽、MVP矩阵插槽，以及与这些对应的设置方法。
     
 示例代码：
+
 ``` c++
 struct UniformTexture {
     // 插槽
@@ -372,6 +377,7 @@ public:
     2. 初始化方法、绘制方法、以及其他各个种类的模型所需要的特定方法
 
 示例代码：
+
 ``` c++
 class Model{
     
@@ -437,6 +443,7 @@ public:
 这里的地面光照示例已经大部分展示里顶点着色器和片元着色器在给环境添加各种光照时的基础应用情况，示例代码中已做注释和说明，具体参阅代码：
 
 > vertexShader:
+
 ``` c++
 attribute vec4 position;
 attribute vec4 color;
@@ -465,6 +472,7 @@ void main(){
 ```
 
 > fragmentShader: 
+
 ``` c++
 #ifdef GL_ES
 
@@ -517,8 +525,11 @@ void main(){
 }
 
 ```
+
 2. 模型光照示例代码：
+
 > vertexShader:
+
 ``` c++
 attribute vec4 position;
 attribute vec4 color;
@@ -555,6 +566,7 @@ void main(){
 ```
 
 > fragmentShader:
+
 ``` c++
 #ifdef GL_ES
 
@@ -654,6 +666,9 @@ void main(){
 }
 
 ```
+
 > 这里另外指出一个模拟镜面反射光的光照模型：blin光照，这种光照效率比上面的镜面反射要高很多，另外能处理当发光属性比较低时，视线方向与反射角度大于90度时光线反射成分被消除的问题，然而使光照效果更加真实并且在实际开发中通常采用这种光照代替镜面反射光照
+
 > 这个光照模型的处理是不使用shader中reflect的内置方法，从reflect的原理上理解，对每一束光都求他的被反射过来的方向，这样的性能消耗非常大，因此我们可以采用视线方向与物体指向光源的方向相加，由向量相加的几何意义可以求得的模拟反射向量是比较接近reflect所求得的向量的，因此在顶点着色器中使用blin光照模型模拟镜面反射可以极大得降低性能的消耗
+
 
