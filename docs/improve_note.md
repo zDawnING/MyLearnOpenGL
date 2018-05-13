@@ -443,7 +443,7 @@ public:
 
 > vertexShader:
 
-``` c++
+``` c
 attribute vec4 position;
 attribute vec4 color;
 attribute vec4 normal;
@@ -472,7 +472,7 @@ void main(){
 
 > fragmentShader: 
 
-``` c++
+``` c
 #ifdef GL_ES
 
 precision mediump float;
@@ -529,7 +529,7 @@ void main(){
 
 > vertexShader:
 
-``` c++
+``` c
 attribute vec4 position;
 attribute vec4 color;
 attribute vec4 texcoord;
@@ -566,7 +566,7 @@ void main(){
 
 > fragmentShader:
 
-``` c++
+``` c
 #ifdef GL_ES
 
 precision mediump float;
@@ -690,7 +690,7 @@ void main(){
 
 示例shader代码：
 > vertexShader
-``` c++
+``` c
 attribute vec4 a_Position;
 attribute vec2 a_TexCoord;
 
@@ -711,7 +711,7 @@ void main(){
 }
 ```
 > fragmentShader
-``` c++
+``` c
 #ifdef GL_ES
 precision mediump float;
 #endif
@@ -746,15 +746,541 @@ void main(){
 
 ` float fogFactor = clamp( exp(-pow((v_Dist * u_FogDist.z),u_FogDist.w)), 0.0, 1.0); `
 
+## 环境映射、折射
 
+要给物体设置环境映射的前提是需要用立方体贴图构建天空盒，关于CubeMap这里就不做叙述，请查找相关资料。
+环境映射实际运用很简单，就是将视线向量与法向量所求得的反射向量，将该向量获取天空盒中的所指向的纹理像素，然后填充至物体本身的纹理像素中。
+示例代码：
+> fragmentShader
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
 
+uniform vec4 U_CameraPos;
 
+uniform samplerCube U_Texture;
 
+varying vec4 V_WorldPos;
+varying vec4 V_Normal;
 
+void main(){
+    // 相机看向当前像素点的向量
+    vec3 eyeVec = normalize(V_WorldPos.xyz - U_CameraPos.xyz);
+    vec3 n = normalize(V_Normal.xyz);
+    // 求出反射后的向量
+    vec3 r = reflect(eyeVec, n);
+    // 此时物体表面等于反射光线所指向的那块纹理
+    vec4 color = textureCube(U_Texture, r);
+    gl_FragColor = color;
+}
+```
 
+折射的反射向量不太一样，shader中有内置这样的函数，如果要研究函数细则，需要参考《Real-Time Rendering》一书
+这里只需要更改内置函数，并添加一个折射系数即可：
+`vec3 r = refract(eyeVec, n, 1.0/1.52); // 参数3是折射系数 `
 
+## 后期处理（添加帧缓冲，创建全屏四边形，添加特效）
 
+帧缓冲、全屏四边形这两个东西的内容太广，这里也不做叙述，细则可以看《OpenGL Programming Guide》一书
+这里描述流程
+	1. 初始化全屏四边形，初始化全屏四边形的shader, 初始化特效shader(直接用全屏四边形的vertexShader, 特效直接写在fragmentShader中)
+	2. 创建一个正常的FBO, 将场景中的物体渲染到FBO中，
+	3. 创建特效FBO, 并设置用于特效化的四边形的图像源为当前fbo中的color buffer
+	4. 绘制时先绘制正常FBO, 再绘制特效FBO (可以多个), 最后把四边形渲染至屏幕
+	
+> 特效本身的特性和原理这里就不做任何扩展，参考《Real-Time Rendering》一书中的一些相关介绍
 
+> 这里直接展示示例代码，代码中已经有大量的注释和思考方向。
 
+### 特效1：高斯模糊
+
+示例代码：fragmentShader
+
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture;
+
+void main(){
+    // 给颜色设定为黑色
+    vec4 color = vec4(0.0,0.0,0.0,0.0);
+    int coreSize = 3; // 算子所对应的权重矩阵为3x3
+    float texelOffset = 0.005; // 调整此值改变模糊的采样范围，用于颜色采样时表达一个单位的跨度距离
+    float kernel[9]; // 卷积核数组
+    // 下面对应所有方位上取像素的权重
+    kernel[6] = 1.0; kernel[7] = 2.0; kernel[8] = 1.0;
+    kernel[3] = 2.0; kernel[4] = 4.0; kernel[5] = 2.0;
+    kernel[0] = 1.0; kernel[1] = 2.0; kernel[2] = 1.0;
+    int index = 0;
+    // 使用两层循环遍历上面的数组，把当前元素周围的一圈像素分别采样颜色值并权重求和
+    for(int y=0;y<coreSize;y++){
+        for (int x=0; x<coreSize; x++) {
+            // 采集当前像素颜色值
+            vec4 currentColor = texture2D(U_Texture, V_Texcoord + vec2(float(-1+x)*texelOffset, float(-1+y)*texelOffset));
+            color += currentColor * kernel[index++];
+        }
+    }
+    // 因为权重总和是16，目的要求得是加权后的平均即除以16，如果不处理则颜色值都会出现曝光（几乎都是白色），因此可以采用一些小数进行加权处理使明度不要发生变化。[这里可以去参考正态分布和明度的相关资料][可顺带了解饱和度和色相]
+    color /= 16.0;
+    gl_FragColor = color;
+}
+
+```
+
+### 特效2：高斯分布模糊
+
+<b>垂直方向的模糊</b>
+
+示例代码：fragmentShader
+
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture;
+
+void main(){
+    float texelOffset = 0.005;
+    // 这里的权重值是以正太分布公式求出来的，对于垂直方向来说，以当前像素为中心，上下各5个单位的权重分配，跨度为11个元素, 由于权重都是小数，因此无需再除总和
+    float weight[5];
+    weight[0] = 0.22; weight[1] = 0.19; weight[2] = 0.12; weight[3] = 0.08; weight[4] = 0.01;
+    vec4 color = texture2D(U_Texture, V_Texcoord) * weight[0];
+    for(int i=1;i<5;i++){
+        color += texture2D(U_Texture, vec2(V_Texcoord.x, V_Texcoord.y+texelOffset*float(i))) * weight[i];
+        color += texture2D(U_Texture, vec2(V_Texcoord.x, V_Texcoord.y-texelOffset*float(i))) * weight[i];
+    }
+    gl_FragColor = color;
+}
+
+```
+
+<b>水平方向的模糊</b>
+
+示例代码：fragmentShader
+
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture;
+
+void main(){
+    float texelOffset = 0.005;
+    // 这里的权重值是以正太分布公式求出来的，对于垂直方向来说，以当前像素为中心，上下各5个单位的权重分配，跨度为11个元素, 由于权重都是小数，因此无需再除总和
+    float weight[5];
+    weight[0] = 0.22; weight[1] = 0.19; weight[2] = 0.12; weight[3] = 0.08; weight[4] = 0.01;
+    vec4 color = texture2D(U_Texture, V_Texcoord) * weight[0];
+    for(int i=1;i<5;i++){
+        color += texture2D(U_Texture, vec2(V_Texcoord.x+texelOffset*float(i), V_Texcoord.y)) * weight[i];
+        color += texture2D(U_Texture, vec2(V_Texcoord.x-texelOffset*float(i), V_Texcoord.y)) * weight[i];
+    }
+    gl_FragColor = color;
+}
+
+```
+
+### 特效3：高动态光照渲染
+
+> 高动态范围图像(High-Dynamic Range，简称HDR)，相比普通的图像，可以提供更多的动态范围和图像细节，根据不同的曝光时间的LDR(Low-Dynamic Range)图像，利用每个曝光时间相对应最佳细节的LDR图像来合成最终HDR图像，能够更好的反映出真实环境中的视觉效果。如果要研究其细则，需要参考《Real-Time Rendering》一书
+
+这里描述流程：
+	1. 初始化HDR渲染(拆分高光和低光图像), 这种方法仅在使用2.0以上才能成功, 需要拆分两个attachment
+	```
+	// 这里仅将r分量上的高光提取出来
+	if(color.r > 1.0){
+			// 对应attachment1
+			gl_FragData[1] = color;
+	}else{
+			// 对应attachment0
+			gl_FragData[0] = color;
+	}
+	```
+	2. 在初始化好的全屏四边形上合并高光和低光纹理对象
+	```
+	gl_FragColor = texture2D(U_Texture, V_Texcoord) + texture2D(U_HDRTexture, V_Texcoord);
+	```
+	3. 因此在初始化HDR的FBO时, 与其他FBO不同的是它有两张color buffer, 分别绑定在attachment0~1上
+	4. 绘制合并之后的图像即可
+
+> 与这种高光处理的还有一种Bloom高光，是这种高光的劣质版，但是性能消耗较低，实现也比较简单，可查阅相关资料处理。
+
+### 多种直接应用特效在全屏四边形中的特效示例
+
+<b>alpha blend</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    gl_FragColor = texture2D(U_Texture1, V_Texcoord)*0.5 + texture2D(U_Texture2, V_Texcoord)*0.5;
+}
+
+```
+<b>变亮</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    vec4 baseColor = texture2D(U_Texture1, V_Texcoord);
+    vec4 blendColor = texture2D(U_Texture2, V_Texcoord);
+    
+    gl_FragColor = max(blendColor, baseColor);
+}
+
+```
+<b>正片叠底</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    vec4 baseColor = texture2D(U_Texture1, V_Texcoord);
+    vec4 blendColor = texture2D(U_Texture2, V_Texcoord);
+    
+    gl_FragColor = blendColor * baseColor;
+}
+
+```
+<b>颜色加深</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    vec4 baseColor = texture2D(U_Texture1, V_Texcoord);
+    vec4 blendColor = texture2D(U_Texture2, V_Texcoord);
+    
+    gl_FragColor = vec4(1.0) - (vec4(1.0) - baseColor) / blendColor;
+}
+
+```
+<b>颜色减淡</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    vec4 baseColor = texture2D(U_Texture1, V_Texcoord);
+    vec4 blendColor = texture2D(U_Texture2, V_Texcoord);
+    
+    gl_FragColor = baseColor / (vec4(1.0) - blendColor);
+}
+
+```
+<b>柔光</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    vec4 baseColor = texture2D(U_Texture1, V_Texcoord);
+    vec4 blendColor = texture2D(U_Texture2, V_Texcoord);
+    
+    gl_FragColor = 2.0 * baseColor * blendColor + baseColor * baseColor - 2.0 * baseColor * baseColor * blendColor;
+}
+
+```
+<b>相加</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    vec4 baseColor = texture2D(U_Texture1, V_Texcoord);
+    vec4 blendColor = texture2D(U_Texture2, V_Texcoord);
+    
+    gl_FragColor = blendColor + baseColor;
+}
+
+```
+<b>相减</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    vec4 baseColor = texture2D(U_Texture1, V_Texcoord);
+    vec4 blendColor = texture2D(U_Texture2, V_Texcoord);
+    
+    gl_FragColor = vec4(baseColor.rgb - blendColor.rgb, 1.0);
+}
+
+```
+<b>叠加</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    
+    vec4 lumCoeff = vec4(0.2125, 0.7154, 0.0721, 1.0); // Coeff因子
+    vec4 baseColor = texture2D(U_Texture1, V_Texcoord);
+    vec4 blendColor = texture2D(U_Texture2, V_Texcoord);
+    
+    float luminance = dot(baseColor.rgb, lumCoeff.rgb);
+    if(luminance < 0.45){
+        gl_FragColor = 2.0 * blendColor * baseColor;
+    }else if(luminance > 0.55){
+        gl_FragColor = vec4(1.0) - 2.0 * (vec4(1.0) - baseColor) * (vec4(1.0) - blendColor);
+    }else{
+        vec4 color1 = 2.0 * blendColor * baseColor;
+        vec4 color2 = vec4(1.0) - 2.0 * (vec4(1.0) - baseColor) * (vec4(1.0) - blendColor);
+        gl_FragColor = mix(color1, color2, (luminance - 0.45) * 10.0);
+    }
+}
+
+```
+<b>强光</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    
+    vec4 lumCoeff = vec4(0.2125, 0.7154, 0.0721, 1.0); // Coeff因子
+    vec4 baseColor = texture2D(U_Texture1, V_Texcoord);
+    vec4 blendColor = texture2D(U_Texture2, V_Texcoord);
+    
+    float luminance = dot(blendColor.rgb, lumCoeff.rgb);
+    if(luminance < 0.45){
+        gl_FragColor = 2.0 * blendColor * baseColor;
+    }else if(luminance > 0.55){
+        gl_FragColor = vec4(1.0) - 2.0 * (vec4(1.0) - baseColor) * (vec4(1.0) - blendColor);
+    }else{
+        vec4 color1 = 2.0 * blendColor * baseColor;
+        vec4 color2 = vec4(1.0) - 2.0 * (vec4(1.0) - baseColor) * (vec4(1.0) - blendColor);
+        gl_FragColor = mix(color1, color2, (luminance - 0.45) * 10.0);
+    }
+}
+
+```
+<b>差值</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    vec4 baseColor = texture2D(U_Texture1, V_Texcoord);
+    vec4 blendColor = texture2D(U_Texture2, V_Texcoord);
+    
+    gl_FragColor = abs(vec4(blendColor.rgb - baseColor.rgb, 1.0));
+}
+
+```
+<b>反差值</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    vec4 baseColor = texture2D(U_Texture1, V_Texcoord);
+    vec4 blendColor = texture2D(U_Texture2, V_Texcoord);
+    
+    gl_FragColor = vec4(vec3(1.0) - abs(vec3(1.0) - blendColor.rgb - baseColor.rgb), 1.0);
+}
+
+```
+<b>排除</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture1;
+uniform sampler2D U_Texture2;
+
+void main(){
+    vec4 baseColor = texture2D(U_Texture1, V_Texcoord);
+    vec4 blendColor = texture2D(U_Texture2, V_Texcoord);
+    
+    gl_FragColor = vec4(baseColor.rgb + blendColor.rgb - (2.0 * baseColor.rgb * blendColor.rgb), 1.0);
+}
+
+```
+<b>平滑</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture;
+
+void main(){
+    // 给颜色设定为黑色
+    vec4 color = vec4(0.0,0.0,0.0,0.0);
+    int coreSize = 3; // 算子所对应的权重矩阵为3x3
+    float texelOffset = 0.0033; // 调整此值改变模糊的采样范围，用于颜色采样时表达一个单位的跨度距离
+    float kernel[9]; // 卷积核数组
+    // 下面对应所有方位上取像素的权重
+    kernel[6] = 1.0; kernel[7] = 1.0; kernel[8] = 1.0;
+    kernel[3] = 1.0; kernel[4] = 1.0; kernel[5] = 1.0;
+    kernel[0] = 1.0; kernel[1] = 1.0; kernel[2] = 1.0;
+    int index = 0;
+    // 使用两层循环遍历上面的数组，把当前元素周围的一圈像素分别采样颜色值并权重求和
+    for(int y=0;y<coreSize;y++){
+        for (int x=0; x<coreSize; x++) {
+            // 采集当前像素颜色值
+            vec4 currentColor = texture2D(U_Texture, V_Texcoord + vec2(float(-1+x)*texelOffset, float(-1+y)*texelOffset));
+            color += currentColor * kernel[index++];
+        }
+    }
+    color /= 9.0;
+    gl_FragColor = color;
+}
+```
+<b>锐化</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture;
+
+void main(){
+    // 给颜色设定为黑色
+    vec4 color = vec4(0.0,0.0,0.0,0.0);
+    int coreSize = 3; // 算子所对应的权重矩阵为3x3
+    float texelOffset = 0.001; // 调整此值改变模糊的采样范围，用于颜色采样时表达一个单位的跨度距离
+    float kernel[9]; // 卷积核数组
+    // 下面对应所有方位上取像素的权重 (锐化是突出当前渲染的像素,并弱化周围的)
+    kernel[6] = 0.0; kernel[7] = -1.0; kernel[8] = 0.0;
+    kernel[3] = -1.0; kernel[4] = 4.0; kernel[5] = -1.0;
+    kernel[0] = 0.0; kernel[1] = -1.0; kernel[2] = 0.0;
+    int index = 0;
+    // 使用两层循环遍历上面的数组，把当前元素周围的一圈像素分别采样颜色值并权重求和
+    for(int y=0;y<coreSize;y++){
+        for (int x=0; x<coreSize; x++) {
+            // 采集当前像素颜色值
+            vec4 currentColor = texture2D(U_Texture, V_Texcoord + vec2(float(-1+x)*texelOffset, float(-1+y)*texelOffset));
+            color += currentColor * kernel[index++];
+        }
+    }
+    gl_FragColor = 4.0 * color + texture2D(U_Texture, V_Texcoord);
+}
+
+```
+<b>边缘检测</b>
+``` c
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+varying vec2 V_Texcoord;
+
+uniform sampler2D U_Texture;
+
+void main(){
+    // 给颜色设定为黑色
+    vec4 color = vec4(0.0,0.0,0.0,0.0);
+    int coreSize = 3; // 算子所对应的权重矩阵为3x3
+    float texelOffset = 0.0033; // 调整此值改变模糊的采样范围，用于颜色采样时表达一个单位的跨度距离
+    float kernel[9]; // 卷积核数组
+    // 下面对应所有方位上取像素的权重
+    kernel[6] = 0.0; kernel[7] = 1.0; kernel[8] = 0.0;
+    kernel[3] = 1.0; kernel[4] = -4.0; kernel[5] = 1.0;
+    kernel[0] = 0.0; kernel[1] = 1.0; kernel[2] = 0.0;
+    int index = 0;
+    // 使用两层循环遍历上面的数组，把当前元素周围的一圈像素分别采样颜色值并权重求和
+    for(int y=0;y<coreSize;y++){
+        for (int x=0; x<coreSize; x++) {
+            // 采集当前像素颜色值
+            vec4 currentColor = texture2D(U_Texture, V_Texcoord + vec2(float(-1+x)*texelOffset, float(-1+y)*texelOffset));
+            color += currentColor * kernel[index++];
+        }
+    }
+    gl_FragColor = 4.0 * color + texture2D(U_Texture, V_Texcoord);
+}
+
+```
 
 
