@@ -7,3 +7,6 @@
 ## FSViewer Demo Preview
 ![image FSViewer Demo](http://ovwfvn3zo.bkt.clouddn.com/QQ20180513-075430@2x.png?imageView2/2/w/520/h/354/interlace/1/q/100)
 
+## Basic Development Guide
+[example](/docs/basic_note.md)
+
