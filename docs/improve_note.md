@@ -12,6 +12,7 @@
 
 ## VertexBufferObject的使用（VBO）
 从CPU将数据传至GPU后，无法再用C/C++语言进行对上传的数据进行变更，因此我们需要一个从CPU到GPU的通讯手段，就是VBO
+
 示例代码：
 ``` c++
     GLuint vbo;
@@ -31,6 +32,7 @@
     glBindBuffer(GL_ARRAY_BUFFER, 0); // 重置
 ```
 另外，与vbo功能类似的一种对象叫ebo, 不同之处在于ebo使用索引进行点的绘制控制，而vbo则是按列表顺序绘制
+
 示例代码：
 ``` c++
     GLuint ebo;
