@@ -32,3 +32,10 @@
 ## Advanced Development Guide
 [OpenGL进阶开发指引](/docs/improve_note.md)
 
+* VertexBufferObject的使用（VBO）
+* Shader的使用
+* 面向对象封装
+* Shader中的光照示例
+* 雾化
+* 环境映射、折射
+* 后期处理（添加帧缓冲，创建全屏四边形，添加特效）
