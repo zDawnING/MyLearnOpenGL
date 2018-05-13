@@ -1,7 +1,6 @@
 # OpenGL进阶开发流程
 
-在基础流程中，所有的绘图数据和编码都是在CPU上运行的，这种图形程序在较大的数据量中会产生很大的性能消耗，因此在进阶阶段要改变策略，将渲染代码上传至GPU上执行。
-（后面看书后再重新更改）
+在基础流程中，所有的绘图数据和编码都是在CPU上运行的，这种图形程序在较大的数据量中会产生很大的性能消耗，因此在进阶阶段要改变策略，将渲染代码上传至GPU上执行。另外这里仅提供着色器的使用方案，不做太多本质的说明，如果想了解着色器基础的内容请阅读[LearnOpenGL-Shader](https://learnopengl-cn.github.io/01%20Getting%20started/05%20Shaders/), 更多的渲染相关内容请阅读[Real-Time Rendering](http://www.realtimerendering.com)
 
 > 环境：Mac OSX 系统, Xcode
 > 
@@ -52,11 +51,11 @@
     `vertexShader` 的基本属性类型：
     1. attribute 一般放置位置数据，顶点颜色，纹理坐标，法线数据等;
     2. uniform 一般放置MVP矩阵（ModelMatrix, ViewMatrix, ProjectionMatrix）;
-    3. varying 用于与fragmentShader共享数据，一般放置顶点颜色，纹理坐标等。
+    3. varying 用于与fragmentShader共享数据，一般放置顶点颜色，纹理坐标等, 这里的值经过顶点着色器后会进行线性插值处理。
     
     `fragmentShader` 的基本属性类型：
     1. uniform: 一般放置纹理采样器（type为sampler2D）, 各种用于渲染的向量数据或光照参数等；
-    2. varying: 同vertexShader
+    2. varying: 会得到经过线性插值的每个像素点的共享数据
 
     vs中给`gl_Position`设置MVP转换后的顶点数据
 
@@ -163,8 +162,98 @@ GLuint CreateBufferObject(GLenum bufferType, GLsizeiptr size, GLenum usage, void
 
     2. 顶点数据大对象（包含多个Vertex）
 
-    3. vbo数据、设置顶点数据的、绑定vbo和解绑等方法
+    3. vbo数据、设置顶点数据的、绑定vbo和解绑等方法
+
+示例代码：
+``` c++
+struct Vertex{
+    float position[4];
+    float color[4];
+    float texcoord[4];
+    float normal[4];
+};
+
+class VertexBuffer{
+public:
+    Vertex *mVertexs; // 这里创建成指针对象是因为无法知道具体大小
     
+    int mVertexCount; // 存储vb中有多少个点
+    
+    GLuint mVBO;
+    
+    /**
+     设置vb大小
+
+     @param vertexCount 点的数量
+     */
+    void setSize(int vertexCount);
+    
+    
+    /**
+     设置坐标
+
+     @param index 第几个点
+     @param x     x
+     @param y     y
+     @param z     z
+     @param w     w
+     */
+    void setPosition(int index, float x, float y, float z, float w = 1.0f);
+    
+    /**
+     设置颜色
+     
+     @param index 第几个点
+     @param r     r
+     @param g     g
+     @param b     b
+     @param a     a
+     */
+    void setColor(int index, float r, float g, float b, float a=1.0f);
+    
+    /**
+     设置纹理坐标
+     
+     @param index 第几个点
+     @param x     x
+     @param y     y
+     */
+    void setTexcoord(int index, float x, float y);
+    
+    /**
+     设置法线
+     
+     @param index 第几个点
+     @param x     x
+     @param y     y
+     @param z     z
+     */
+    void setNormal(int index, float x, float y, float z);
+    
+    
+    /**
+     绑定当前vbo数据集
+     */
+    void bind();
+    
+    
+    /**
+     解绑当前vbo数据集
+     */
+    void unbind();
+    
+    
+    /**
+     获取某一个顶点的引用,用于外部修改
+
+     @param index 索引
+
+     @return 顶点数据
+     */
+    Vertex & get(GLuint index);
+};
+
+```
 
 3. Shader类 （包括shader对象和程序的整个创建流程）
 
@@ -173,18 +262,180 @@ GLuint CreateBufferObject(GLenum bufferType, GLsizeiptr size, GLenum usage, void
     2. 结构体2：UniformVector4f 用于存储各种用于算法计算的vec4变量数据和对应插槽
 
     3. 程序对象、对应上面两个结构体类型的容器，属性插槽、MVP矩阵插槽，以及与这些对应的设置方法。
+    
+示例代码：
+``` c++
+struct UniformTexture {
+    // 插槽
+    GLint mLocation;
+    // 纹理对象
+    GLuint mTexture;
+    
+    UniformTexture(){
+        mLocation = -1;
+        mTexture = 0;
+    }
+};
+
+// 添加对vector4的支持
+struct UniformVector4f {
+    // 插槽
+    GLint mLocation;
+    // uniform值
+    float v[4];
+    
+    UniformVector4f(){
+        mLocation = -1;
+        // 初始化为0
+        memset(v, 0, sizeof(float)*4);
+    }
+};
+
+// 添加对立方体贴图的支持
+struct UniformTextureCube {
+    GLint mLocation;
+    GLuint mTexture;
+    
+    UniformTextureCube() {
+        mLocation = -1;
+        mTexture = 0;
+    }
+};
+
+class Shader{
+public:
+    
+    // 声明程序
+    GLint mProgram;
+    
+    // 至少支持一个纹理
+//    UniformTexture mTexture;
+    
+    // 声明一个容器存储多张纹理
+    std::map<std::string, UniformTexture*> mUniformTextures;
+    
+    std::map<std::string, UniformVector4f*> mUniformVec4s;
+    
+    std::map<std::string, UniformTextureCube*> mUniformTextureCubes;
+    
+    // 声明属性插槽
+    GLint mPositionLocation, mColorLocation, mTexcoordLocation, mNormalLocation;
+    
+    // 声明矩阵插槽
+    GLint mModelMatrixLocation, mViewMatrixLocation, mProjectionMatrixLocation;
+    
+    void init(const char*vs, const char*fs);
+    
+    // 绘制时需要的MVP矩阵
+    void bind(float *M, float *V, float *P);
     
     
+    /**
+     设置图片纹理
+
+     @param name      在shader中变量的名称
+     @param imagePath 纹理图片地址
+     */
+    void setTexture(const char * name, const char * imagePath);
     
+    
+    /**
+     设置程序纹理
+
+     @param name    在shader中的变量名称
+     @param texture 纹理对象
+     */
+    void setTexture(const char * name, GLuint texture);
+    
+    
+    void setVec4(const char * name, float x, float y, float z, float w);
+    
+    
+    /**
+     设置立方体贴图纹理
+
+     @param name    在shader中的变量名称
+     @param texture 纹理对象
+
+     @return oldTexture 旧纹理对象
+     */
+    GLuint setTextureCube(const char * name, GLuint texture);
+    
+};
+
+```
+    
 4. Model类（统称，可根据类型划分多种类） （放置在场景中的所有模型，包括地面，天空盒，粒子等等）
  
     1. VertexBuffer对象、模型矩阵(M)、Shader对象、以及其他各个种类的模型所需要的特定属性
 
     2. 初始化方法、绘制方法、以及其他各个种类的模型所需要的特定方法
+
+示例代码：
+``` c++
+class Model{
     
+    VertexBuffer *mVertexBuffer;
+    
+    Shader *mShader;
+    
+public:
+    
+    // 模型缩放比例
+    float scaleX, scaleY, scaleZ;
+    
+    // 物体当前世界坐标系
+    glm::vec3 worldPos;
+    
+    // 物体当前视线方向
+    glm::vec3 viewDirection;
+    
+    // 物体左右移动标识
+    bool mMoveLeft, mMoveRight, mMoveForward, mMoveBack;
+    
+    // 是否开启键盘按键移动
+    bool openKeyDownMove;
+    
+    // 将该矩阵放置于public中，因为draw接口无法满足很复杂的情况，直接由外部修改会更加方便
+    glm::mat4 mModelMatrix;
+    
+    Model();
+    
+    void init(const char *modelPath);
+    
+    void draw(glm::mat4 &viewMatrix, glm::mat4 projectionMatrix, float x, float y, float z);
+    
+    void update(float frameTime);
+    
+    void setPosition(float x, float y, float z);
+    
+    void setScale(float x, float y, float z);
+    
+    void setRotate(float angle);
+    
+    void setAmbientMaterial(float r, float g, float b, float a);
+    
+    void setDiffuseMaterial(float r, float g, float b, float a);
+    
+    void setSpecularMaterial(float r, float g, float b, float a);
+    
+    void setTexture(const char *imagePath);
+    
+    void setTexture(const char *name, const char *imagePath);
+    
+    void movePosition(float deltaTime);
+    
+};
+```
+
+> 示例代码中有部分是与现在的FSViewer并不匹配（进行了新的方法处理），后续会在第二版进行升级，到时可以结合这里的文字并参阅实现源码进行分析。
+
 ## Shader中的光照示例：
 
 1. 地面光照示例代码：
+
+这里的地面光照示例已经大部分展示里顶点着色器和片元着色器在给环境添加各种光照时的基础应用情况，示例代码中已做注释和说明，具体参阅代码：
+
 > vertexShader:
 ``` c++
 attribute vec4 position;
@@ -291,7 +542,7 @@ varying vec4 V_Texcoord;
 
 void main(){
     V_Color = color;
-    
+    // 之所以在vs中用IT矩阵处理法向量因为在这里的处理的性能消耗较小，如果将此处理放在fs中则一般在法线贴图的时候才会用（因为涉及到大量的几何计算）
     V_Normal = IT_ModelMatrix * normal;
     
     // 世界坐标系上的点
@@ -403,3 +654,6 @@ void main(){
 }
 
 ```
+> 这里另外指出一个模拟镜面反射光的光照模型：blin光照，这种光照效率比上面的镜面反射要高很多，另外能处理当发光属性比较低时，视线方向与反射角度大于90度时光线反射成分被消除的问题，然而使光照效果更加真实并且在实际开发中通常采用这种光照代替镜面反射光照
+> 这个光照模型的处理是不使用shader中reflect的内置方法，从reflect的原理上理解，对每一束光都求他的被反射过来的方向，这样的性能消耗非常大，因此我们可以采用视线方向与物体指向光源的方向相加，由向量相加的几何意义可以求得的模拟反射向量是比较接近reflect所求得的向量的，因此在顶点着色器中使用blin光照模型模拟镜面反射可以极大得降低性能的消耗
+
